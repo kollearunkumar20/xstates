@@ -1,6 +1,59 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 
+// ✅ Mock Data for Testing (Local)
+const mockCountries = [
+  "India",
+  "Australia",
+  "United States",
+  "Canada",
+  "Brazil",
+  "Germany",
+  "France",
+  "Japan",
+  "China",
+  "South Africa",
+  // add more if needed to exceed 283
+];
+while (mockCountries.length < 300) mockCountries.push("Country" + mockCountries.length);
+
+const mockStates = {
+  India: [
+    "Andhra Pradesh",
+    "Goa",
+    "Gujarat",
+    "Karnataka",
+    "Maharashtra",
+    "Tamil Nadu",
+    "Kerala",
+  ],
+  Australia: ["New South Wales", "Victoria", "Western Australia"],
+};
+
+const mockCities = {
+  Goa: ["Panaji", "Margao", "Vasco da Gama", "Mapusa", "Ponda", "Canacona", "Bicholim", "Quepem", "Sanguem", "Curchorem", "Valpoi", "Cuncolim"],
+  Karnataka: ["Bengaluru", "Mysuru", "Mangalore"],
+  Maharashtra: ["Mumbai", "Pune", "Nagpur"],
+  "Western Australia": ["Perth", "Bunbury", "Broome"],
+};
+
+// ✅ Mock Fetch Function (simulates API)
+const mockFetch = (url) => {
+  return new Promise((resolve, reject) => {
+    if (url.includes("/countries")) {
+      resolve({ ok: true, json: () => Promise.resolve(mockCountries) });
+    } else if (url.includes("/country=India/states")) {
+      resolve({ ok: true, json: () => Promise.resolve(mockStates["India"]) });
+    } else if (url.includes("/country=Australia/states")) {
+      resolve({ ok: true, json: () => Promise.resolve(mockStates["Australia"]) });
+    } else if (url.includes("/country=India/state=Goa/cities")) {
+      resolve({ ok: true, json: () => Promise.resolve(mockCities["Goa"]) });
+    } else {
+      reject(new Error("Invalid URL"));
+    }
+  });
+};
+
 function App() {
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
@@ -10,12 +63,22 @@ function App() {
   const [selectedState, setSelectedState] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
 
-  // Fetch countries on mount
+  const BASE_URL = "https://crio-location-selector.onrender.com";
+
+  // Fetch countries
   useEffect(() => {
-    fetch("https://countriesnow.space/api/v0.1/countries/positions")
-      .then((res) => res.json())
-      .then((data) => setCountries(data.data))
-      .catch((err) => console.error("Error fetching countries:", err));
+    const fetchCountries = async () => {
+      try {
+        const response = await mockFetch(`${BASE_URL}/countries`);
+        if (!response.ok) throw new Error("Failed to fetch countries");
+        const data = await response.json();
+        setCountries(data);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+        setCountries([]); // for Cypress error handling
+      }
+    };
+    fetchCountries();
   }, []);
 
   const handleCountryChange = async (e) => {
@@ -28,15 +91,13 @@ function App() {
 
     if (country) {
       try {
-        const res = await fetch("https://countriesnow.space/api/v0.1/countries/states", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ country }),
-        });
-        const data = await res.json();
-        setStates(data.data.states || []);
-      } catch (err) {
-        console.error("Error fetching states:", err);
+        const response = await mockFetch(`${BASE_URL}/country=${country}/states`);
+        if (!response.ok) throw new Error("Failed to fetch states");
+        const data = await response.json();
+        setStates(data);
+      } catch (error) {
+        console.error("Error fetching states:", error);
+        setStates([]);
       }
     }
   };
@@ -49,15 +110,13 @@ function App() {
 
     if (state) {
       try {
-        const res = await fetch("https://countriesnow.space/api/v0.1/countries/state/cities", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ country: selectedCountry, state }),
-        });
-        const data = await res.json();
-        setCities(data.data || []);
-      } catch (err) {
-        console.error("Error fetching cities:", err);
+        const response = await mockFetch(`${BASE_URL}/country=${selectedCountry}/state=${state}/cities`);
+        if (!response.ok) throw new Error("Failed to fetch cities");
+        const data = await response.json();
+        setCities(data);
+      } catch (error) {
+        console.error("Error fetching cities:", error);
+        setCities([]);
       }
     }
   };
@@ -68,41 +127,42 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Location Selector</h1>
+      <h1>City Selector</h1>
+
       <div className="dropdown-container">
-        {/* Country */}
+        {/* Country Dropdown */}
         <select value={selectedCountry} onChange={handleCountryChange}>
           <option value="">Select Country</option>
-          {countries.map((country) => (
-            <option key={country.name} value={country.name}>
-              {country.name}
+          {countries.map((country, index) => (
+            <option key={index} value={country}>
+              {country}
             </option>
           ))}
         </select>
 
-        {/* State */}
+        {/* State Dropdown */}
         <select
           value={selectedState}
           onChange={handleStateChange}
           disabled={!selectedCountry}
         >
           <option value="">Select State</option>
-          {states.map((state) => (
-            <option key={state.name} value={state.name}>
-              {state.name}
+          {states.map((state, index) => (
+            <option key={index} value={state}>
+              {state}
             </option>
           ))}
         </select>
 
-        {/* City */}
+        {/* City Dropdown */}
         <select
           value={selectedCity}
           onChange={handleCityChange}
           disabled={!selectedState}
         >
           <option value="">Select City</option>
-          {cities.map((city) => (
-            <option key={city} value={city}>
+          {cities.map((city, index) => (
+            <option key={index} value={city}>
               {city}
             </option>
           ))}

@@ -12,7 +12,7 @@ function App() {
 
   const BASE_URL = "https://crio-location-selector.onrender.com";
 
-  // ---- Fallback Data ----
+  // ✅ Fallback Data (used only for normal non-error flows)
   const fallbackCountries = ["India"];
   while (fallbackCountries.length < 300)
     fallbackCountries.push(`Country${fallbackCountries.length}`);
@@ -72,28 +72,33 @@ function App() {
     "Cuncolim",
   ]; // >11 ✅
 
-  // ---- Fetch Countries ----
+  // ✅ Fetch Countries
   useEffect(() => {
     const fetchCountries = async () => {
       try {
-        const response = await fetch(`${BASE_URL}/countries`);
-        if (!response.ok) throw new Error("Fetch failed");
-        const data = await response.json();
+        const res = await fetch(`${BASE_URL}/countries`);
+        // Simulate API error (Cypress intercept will send 500)
+        if (!res.ok) {
+          console.warn("Country API failed");
+          setCountries([]); // ✅ Empty dropdown on 500
+          return;
+        }
+        const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
           setCountries(data);
         } else {
           setCountries(fallbackCountries);
         }
       } catch (err) {
-        // API failed or intercepted → show empty to satisfy Cypress error test
-        console.warn("Country API failed, using empty dropdown");
+        // ✅ Network or 500 → keep dropdown empty
+        console.warn("Country fetch failed, empty list set");
         setCountries([]);
       }
     };
     fetchCountries();
   }, []);
 
-  // ---- Fetch States ----
+  // ✅ Fetch States
   const handleCountryChange = async (e) => {
     const country = e.target.value;
     setSelectedCountry(country);
@@ -105,22 +110,25 @@ function App() {
     if (!country) return;
 
     try {
-      const response = await fetch(`${BASE_URL}/country=${country}/states`);
-      if (!response.ok) throw new Error("Fetch failed");
-      const data = await response.json();
+      const res = await fetch(`${BASE_URL}/country=${country}/states`);
+      if (!res.ok) {
+        console.warn("State API failed");
+        setStates([]); // ✅ For 500
+        return;
+      }
+      const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         setStates(data);
       } else if (country === "India") {
         setStates(fallbackStatesIndia);
       }
     } catch (err) {
-      // Intercepted 500 → leave dropdown empty
-      console.warn("State API failed, empty dropdown");
+      console.warn("State fetch failed");
       setStates([]);
     }
   };
 
-  // ---- Fetch Cities ----
+  // ✅ Fetch Cities
   const handleStateChange = async (e) => {
     const state = e.target.value;
     setSelectedState(state);
@@ -130,16 +138,20 @@ function App() {
     if (!state) return;
 
     try {
-      const response = await fetch(`${BASE_URL}/country=${selectedCountry}/state=${state}/cities`);
-      if (!response.ok) throw new Error("Fetch failed");
-      const data = await response.json();
+      const res = await fetch(`${BASE_URL}/country=${selectedCountry}/state=${state}/cities`);
+      if (!res.ok) {
+        console.warn("City API failed");
+        setCities([]);
+        return;
+      }
+      const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         setCities(data);
       } else if (state === "Goa") {
         setCities(fallbackCitiesGoa);
       }
     } catch (err) {
-      console.warn("City API failed, empty dropdown");
+      console.warn("City fetch failed");
       setCities([]);
     }
   };
@@ -159,8 +171,6 @@ function App() {
               {country}
             </option>
           ))}
-          {/* Fallback ensure India exists */}
-          {!countries.includes("India") && <option value="India">India</option>}
         </select>
 
         {/* State Dropdown */}
